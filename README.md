@@ -32,6 +32,35 @@ Phase 0 establishes a minimal TypeScript CLI scaffold for learning and for the n
 - npm run check
 - npm run build
 
+## Phase 1A: Solid Connectivity Foundation
+
+Phase 1A adds a connectivity smoke check that validates:
+- Solid authentication using a refresh-token flow
+- Pod base access
+- Idempotent bootstrap for notes/ and summaries/ containers
+
+Run:
+- npm run dev -- connectivity-check
+
+Solid setup prerequisites (manual for now):
+1. Create or use an existing Solid identity with an OIDC issuer.
+2. Register an OAuth client for CLI usage and capture client ID/secret.
+3. Obtain a refresh token for that client.
+4. Confirm the target Pod base URL is reachable for that identity.
+5. Confirm this identity can read and write under the target Pod location.
+
+Required environment variables:
+- SOLID_OIDC_ISSUER
+- SOLID_CLIENT_ID
+- SOLID_CLIENT_SECRET
+- SOLID_REFRESH_TOKEN
+- SOLID_POD_BASE_URL
+
+Optional environment variables:
+- SOLID_TOKEN_TYPE (DPoP or Bearer, default DPoP)
+- SOLID_NOTES_CONTAINER_URL
+- SOLID_SUMMARIES_CONTAINER_URL
+
 ## Planned Features (Phase 1)
 
 - Add note
@@ -80,5 +109,5 @@ Suggested command ideas:
 
 ## Status
 
-Project initialized in planning stage.  
+Project initialized in planning stage.
 Name selected: PodPad.
