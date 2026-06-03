@@ -4,13 +4,13 @@ Deliver a learning-first CLI foundation in Node.js + TypeScript that proves the 
 
 ### Steps
 
-#### Phase 0: Project framing and scaffolding
-1. Confirm implementation boundaries from README/AGENTS: CLI-first, minimal dependencies, no frontend, no deployment, small reviewable increments.
-2. Define minimal TypeScript project skeleton and command entrypoint.
-3. Decide baseline Node version and package scripts for build/run/test. Depends on step 1.
+#### Phase 1.0: Project framing and scaffolding
+1. [x] Confirm implementation boundaries from README/AGENTS: CLI-first, minimal dependencies, no frontend, no deployment, small reviewable increments.
+2. [x] Define minimal TypeScript project skeleton and command entrypoint.
+3. [x] Decide baseline Node version and package scripts for build/run/test. Depends on step 1.
 
 #### Phase 1A: Solid connectivity foundation
-Dependency: complete Phase 0.
+Dependency: complete Phase 1.0.
 1. Implement auth/session bootstrap for beginner-friendly local usage first. Follow-up path documents service-style auth for later learning.
 2. Implement Pod client wrapper that centralizes authenticated read/write/list operations. Depends on step 1.
 3. Implement idempotent container bootstrap for notes/ and summaries/. Depends on step 2.

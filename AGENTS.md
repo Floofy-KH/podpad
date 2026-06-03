@@ -34,8 +34,7 @@ This file provides repository-specific guidance for AI coding agents.
 
 ## Commands And Validation
 
-- No canonical build, test, or lint commands are defined yet.
-- Before proposing automation, inspect repository files and add missing commands to [README.md](README.md) and this file.
+- Canonical scripts, setup steps, and tooling docs live in [README.md](README.md).
 
 ## Agent Behavior
 

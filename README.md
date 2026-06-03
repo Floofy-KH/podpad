@@ -18,6 +18,20 @@ Initial scope is intentionally small and desktop-developer friendly:
 - No deployment or infrastructure setup yet
 - Minimal dependencies and moving parts
 
+## Phase 0 Baseline
+
+Phase 0 establishes a minimal TypeScript CLI scaffold for learning and for the next Solid Pod integration slices.
+
+- Runtime baseline: Node.js 20.11+
+- Entry point: src/cli.ts
+- Build output: dist/
+
+### Phase 0 Commands
+
+- npm run dev -- phase0-check
+- npm run check
+- npm run build
+
 ## Planned Features (Phase 1)
 
 - Add note
