@@ -6,6 +6,8 @@ export interface SolidAuthConfig {
   clientSecret: string;
   refreshToken: string;
   tokenType: SolidTokenType;
+  maxRetries: number;
+  retryDelayMs: number;
 }
 
 export interface PodConfig {
@@ -51,6 +53,22 @@ function parseTokenType(raw: string | undefined): SolidTokenType {
     "SOLID_TOKEN_TYPE must be either DPoP or Bearer."
   ]);
 }
+  function parseNonNegativeInt(
+    name: string,
+    raw: string | undefined,
+    defaultValue: number
+  ): number {
+    if (!raw) {
+      return defaultValue;
+    }
+
+    const value = Number.parseInt(raw, 10);
+    if (Number.isNaN(value) || value < 0) {
+      throw new ConfigError(`Invalid ${name}.`, [`${name} must be a non-negative integer.`]);
+    }
+
+    return value;
+  }
 
 export function loadPhase1AConfigFromEnv(): Phase1AConfig {
   const errors: string[] = [];
@@ -82,6 +100,16 @@ export function loadPhase1AConfigFromEnv(): Phase1AConfig {
   }
 
   const tokenType = parseTokenType(process.env.SOLID_TOKEN_TYPE?.trim());
+    const maxRetries = parseNonNegativeInt(
+      "SOLID_AUTH_MAX_RETRIES",
+      process.env.SOLID_AUTH_MAX_RETRIES?.trim(),
+      2
+    );
+    const retryDelayMs = parseNonNegativeInt(
+      "SOLID_AUTH_RETRY_DELAY_MS",
+      process.env.SOLID_AUTH_RETRY_DELAY_MS?.trim(),
+      2000
+    );
   const podBaseUrl = normalizeContainerUrl(podBaseUrlRaw as string);
   const notesContainerUrl = normalizeContainerUrl(
     process.env.SOLID_NOTES_CONTAINER_URL?.trim() || `${podBaseUrl}notes/`
@@ -96,7 +124,9 @@ export function loadPhase1AConfigFromEnv(): Phase1AConfig {
       clientId: clientId as string,
       clientSecret: clientSecret as string,
       refreshToken: refreshToken as string,
-      tokenType
+      tokenType,
+      maxRetries,
+      retryDelayMs
     },
     pod: {
       podBaseUrl,

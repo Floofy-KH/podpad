@@ -4,6 +4,12 @@ import { PodClient } from "../pod/client";
 import { ConfigError, loadPhase1AConfigFromEnv } from "../utils/config";
 import { logError, logInfo, logSuccess } from "../utils/logger";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function printConfigHelp(): void {
   logInfo("Set these environment variables before running connectivity-check:");
   logInfo("- SOLID_OIDC_ISSUER");
@@ -13,16 +19,20 @@ function printConfigHelp(): void {
   logInfo("- SOLID_POD_BASE_URL");
   logInfo("Optional:");
   logInfo("- SOLID_TOKEN_TYPE (DPoP or Bearer; default DPoP)");
+  logInfo("- SOLID_AUTH_MAX_RETRIES (non-negative integer; default 2)");
+  logInfo("- SOLID_AUTH_RETRY_DELAY_MS (non-negative integer; default 2000)");
   logInfo("- SOLID_NOTES_CONTAINER_URL");
   logInfo("- SOLID_SUMMARIES_CONTAINER_URL");
 }
 
 export async function runConnectivityCheck(): Promise<void> {
+  let session: { logout: () => Promise<void> } | undefined;
+
   try {
     const config = loadPhase1AConfigFromEnv();
 
     logInfo("Starting Solid authentication...");
-    const session = await createAuthenticatedSession(config.auth);
+    session = await createAuthenticatedSession(config.auth);
     logSuccess(`Authenticated as ${session.info.webId ?? "unknown WebID"}`);
 
     const podClient = new PodClient(session);
@@ -57,5 +67,13 @@ export async function runConnectivityCheck(): Promise<void> {
     const fallback = String(error);
     logError(fallback);
     throw new Error(fallback);
+  } finally {
+    if (session) {
+      try {
+        await Promise.race([session.logout(), sleep(2000)]);
+      } catch {
+        // Ignore logout errors for this smoke check.
+      }
+    }
   }
 }

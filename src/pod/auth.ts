@@ -2,22 +2,53 @@ import { Session } from "@inrupt/solid-client-authn-node";
 
 import { SolidAuthConfig } from "../utils/config";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableAuthError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return message.includes("timed out") || message.includes("timeout");
+}
+
 export async function createAuthenticatedSession(
   authConfig: SolidAuthConfig
 ): Promise<Session> {
-  const session = new Session();
+  let lastError: unknown;
 
-  await session.login({
-    oidcIssuer: authConfig.oidcIssuer,
-    clientId: authConfig.clientId,
-    clientSecret: authConfig.clientSecret,
-    refreshToken: authConfig.refreshToken,
-    tokenType: authConfig.tokenType
-  });
+  for (let attempt = 0; attempt <= authConfig.maxRetries; attempt += 1) {
+    const session = new Session();
 
-  if (!session.info.isLoggedIn) {
-    throw new Error("Solid login did not establish an authenticated session.");
+    try {
+      await session.login({
+        oidcIssuer: authConfig.oidcIssuer,
+        clientId: authConfig.clientId,
+        clientSecret: authConfig.clientSecret,
+        refreshToken: authConfig.refreshToken,
+        tokenType: authConfig.tokenType
+      });
+
+      if (!session.info.isLoggedIn) {
+        throw new Error("Solid login did not establish an authenticated session.");
+      }
+
+      return session;
+    } catch (error: unknown) {
+      lastError = error;
+
+      if (!isRetryableAuthError(error) || attempt >= authConfig.maxRetries) {
+        throw error;
+      }
+
+      await sleep(authConfig.retryDelayMs);
+    }
   }
 
-  return session;
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }

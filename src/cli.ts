@@ -54,8 +54,12 @@ async function main(argv: string[]): Promise<void> {
   printHelp();
 }
 
-main(process.argv).catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`Command failed: ${message}`);
-  process.exitCode = 1;
-});
+main(process.argv)
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Command failed: ${message}`);
+    process.exit(1);
+  });

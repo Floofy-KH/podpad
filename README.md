@@ -58,6 +58,8 @@ Required environment variables:
 
 Optional environment variables:
 - SOLID_TOKEN_TYPE (DPoP or Bearer, default DPoP)
+- SOLID_AUTH_MAX_RETRIES (non-negative integer, default 2)
+- SOLID_AUTH_RETRY_DELAY_MS (non-negative integer, default 2000)
 - SOLID_NOTES_CONTAINER_URL
 - SOLID_SUMMARIES_CONTAINER_URL
 
@@ -111,3 +113,116 @@ Suggested command ideas:
 
 Project initialized in planning stage.
 Name selected: PodPad.
+
+## Repeatable Auth Setup (Phase 1A)
+
+The commands below are the repeatable setup flow for Solid auth on `solidcommunity.net`.
+
+### 1. Register a client and capture client ID/secret
+
+Run in PowerShell:
+
+```powershell
+$body = @{
+  client_name = "PodPad CLI"
+  redirect_uris = @("http://127.0.0.1:8787/callback")
+  grant_types = @("authorization_code", "refresh_token")
+  response_types = @("code")
+  token_endpoint_auth_method = "client_secret_basic"
+} | ConvertTo-Json -Depth 6
+
+$client = Invoke-RestMethod -Method Post -Uri "https://solidcommunity.net/.oidc/reg" -ContentType "application/json" -Body $body
+
+Write-Host "Client ID:     $($client.client_id)"
+Write-Host "Client Secret: $($client.client_secret)"
+```
+
+### 2. Request an auth code with PKCE
+
+Run in PowerShell, then copy the full callback URL from your browser and paste it when prompted:
+
+```powershell
+$clientId = "PASTE_CLIENT_ID"
+$redirectUri = "http://127.0.0.1:8787/callback"
+$issuer = "https://solidcommunity.net"
+$scope = "openid webid offline_access profile"
+
+function New-Base64UrlString([byte[]]$bytes) {
+  [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
+}
+
+$verifierBytes = New-Object byte[] 64
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($verifierBytes)
+$pkceVerifier = New-Base64UrlString $verifierBytes
+
+$sha = [System.Security.Cryptography.SHA256]::Create()
+$challengeBytes = $sha.ComputeHash([Text.Encoding]::ASCII.GetBytes($pkceVerifier))
+$pkceChallenge = New-Base64UrlString $challengeBytes
+
+$stateBytes = New-Object byte[] 24
+[System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($stateBytes)
+$state = New-Base64UrlString $stateBytes
+
+$authUrl = "$issuer/.oidc/auth?response_type=code" +
+  "&client_id=$([Uri]::EscapeDataString($clientId))" +
+  "&redirect_uri=$([Uri]::EscapeDataString($redirectUri))" +
+  "&scope=$([Uri]::EscapeDataString($scope))" +
+  "&code_challenge=$([Uri]::EscapeDataString($pkceChallenge))" +
+  "&code_challenge_method=S256" +
+  "&state=$([Uri]::EscapeDataString($state))" +
+  "&prompt=consent"
+
+Start-Process $authUrl
+$callbackUrl = Read-Host "Paste callback URL"
+
+if ($callbackUrl -notmatch "[\?\&]code=([^&]+)") { throw "No code found." }
+$authCode = [Uri]::UnescapeDataString($matches[1])
+
+if ($callbackUrl -notmatch "[\?\&]state=([^&]+)") { throw "No state found." }
+$returnedState = [Uri]::UnescapeDataString($matches[1])
+if ($returnedState -ne $state) { throw "State mismatch." }
+
+$env:PODPAD_CLIENT_ID = $clientId
+$env:PODPAD_PKCE_VERIFIER = $pkceVerifier
+$env:PODPAD_AUTH_CODE = $authCode
+$env:PODPAD_REDIRECT_URI = $redirectUri
+```
+
+### 3. Exchange auth code for refresh token
+
+```powershell
+$clientSecret = "PASTE_CLIENT_SECRET"
+$basic = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$env:PODPAD_CLIENT_ID`:$clientSecret"))
+
+$token = Invoke-RestMethod `
+  -Method Post `
+  -Uri "https://solidcommunity.net/.oidc/token" `
+  -Headers @{ Authorization = "Basic $basic" } `
+  -ContentType "application/x-www-form-urlencoded" `
+  -Body @{
+    grant_type    = "authorization_code"
+    code          = $env:PODPAD_AUTH_CODE
+    redirect_uri  = $env:PODPAD_REDIRECT_URI
+    code_verifier = $env:PODPAD_PKCE_VERIFIER
+  }
+
+if (-not $token.refresh_token) { throw "No refresh_token returned." }
+Write-Host "Refresh token: $($token.refresh_token)"
+```
+
+### 4. Populate `.env`
+
+Fill your local `.env` file with values from steps 1-3 and your Pod URL.
+
+### 5. Load `.env` into current PowerShell process and run check
+
+```powershell
+Get-Content .env |
+  Where-Object { $_ -and -not $_.Trim().StartsWith("#") } |
+  ForEach-Object {
+    $name, $value = $_ -split "=", 2
+    Set-Item -Path "Env:$name" -Value $value
+  }
+
+npm run dev -- connectivity-check
+```

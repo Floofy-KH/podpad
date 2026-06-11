@@ -16,24 +16,50 @@ export class PodClient {
   }
 
   async ensureContainer(containerUrl: string): Promise<void> {
-    const probeResponse = await this.fetchFn(containerUrl, { method: "HEAD" });
-
-    if (probeResponse.ok) {
+    if (await this.containerExists(containerUrl)) {
       return;
     }
 
-    if (probeResponse.status !== 404) {
-      throw new Error(
-        `Unable to inspect container ${containerUrl} (HTTP ${probeResponse.status}).`
-      );
-    }
-
     const createResponse = await this.fetchFn(containerUrl, { method: "MKCOL" });
-
     if (!createResponse.ok && createResponse.status !== 405 && createResponse.status !== 409) {
       throw new Error(
         `Unable to create container ${containerUrl} (HTTP ${createResponse.status}).`
       );
+    }
+
+    if (await this.containerExists(containerUrl)) {
+      return;
+    }
+
+    // Fallback for providers that do not support MKCOL and expect LDP POST on parent.
+    const normalizedUrl = containerUrl.endsWith("/") ? containerUrl.slice(0, -1) : containerUrl;
+    const slashIndex = normalizedUrl.lastIndexOf("/");
+
+    if (slashIndex <= "https://".length) {
+      throw new Error(`Invalid container URL: ${containerUrl}`);
+    }
+
+    const parentUrl = `${normalizedUrl.slice(0, slashIndex + 1)}`;
+    const slug = normalizedUrl.slice(slashIndex + 1);
+
+    const postCreateResponse = await this.fetchFn(parentUrl, {
+      method: "POST",
+      headers: {
+        Link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+        Slug: slug,
+        "Content-Type": "text/turtle"
+      },
+      body: ""
+    });
+
+    if (!postCreateResponse.ok && postCreateResponse.status !== 409) {
+      throw new Error(
+        `Unable to create container ${containerUrl} via parent POST (HTTP ${postCreateResponse.status}).`
+      );
+    }
+
+    if (!(await this.containerExists(containerUrl))) {
+      throw new Error(`Container ${containerUrl} is still not accessible after bootstrap attempts.`);
     }
   }
 
@@ -81,6 +107,25 @@ export class PodClient {
     if (!response.ok) {
       throw new Error(`Unable to write resource ${resourceUrl} (HTTP ${response.status}).`);
     }
+  }
+
+  private async containerExists(containerUrl: string): Promise<boolean> {
+    const response = await this.fetchFn(containerUrl, {
+      method: "GET",
+      headers: {
+        Accept: "text/turtle"
+      }
+    });
+
+    if (response.ok) {
+      return true;
+    }
+
+    if (response.status === 404) {
+      return false;
+    }
+
+    throw new Error(`Unable to inspect container ${containerUrl} (HTTP ${response.status}).`);
   }
 
   private extractContainedUrls(turtleBody: string): string[] {
