@@ -15,7 +15,7 @@ Dependency: complete Phase 1.0.
 2. [x] Implement Pod client wrapper that centralizes authenticated read/write/list operations. Depends on step 1.
 3. [x] Implement idempotent container bootstrap for notes/ and summaries/. Depends on step 2.
 4. [x] Add a connectivity smoke command/check that validates auth + Pod access before feature commands. Depends on steps 1-3.
-5. [ ] Set up a real Solid account/client credentials locally, run connectivity-check against a valid Pod, and do manual verification/playground passes (auth success, container bootstrap, repeat run idempotency).
+5. [x] Set up a real Solid account/client credentials locally, run connectivity-check against a valid Pod, and do manual verification/playground passes (auth success, container bootstrap, repeat run idempotency).
 
 #### Phase 1B: Note command slice
 Dependency: complete Phase 1A.
