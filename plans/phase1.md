@@ -16,6 +16,7 @@ Dependency: complete Phase 1.0.
 3. [x] Implement idempotent container bootstrap for notes/ and summaries/. Depends on step 2.
 4. [x] Add a connectivity smoke command/check that validates auth + Pod access before feature commands. Depends on steps 1-3.
 5. [x] Set up a real Solid account/client credentials locally, run connectivity-check against a valid Pod, and do manual verification/playground passes (auth success, container bootstrap, repeat run idempotency).
+6. Add unit tests for pure config logic: loadPhase1AConfigFromEnv (env var validation, default values, ConfigError aggregation), parseTokenType, and parseNonNegativeInt. No Pod session required. Target file: tests/utils/config.test.ts.
 
 #### Phase 1B: Note command slice
 Dependency: complete Phase 1A.
@@ -23,6 +24,8 @@ Dependency: complete Phase 1A.
 2. Implement list-notes command to enumerate notes with learner-friendly output. Depends on Phase 1A step 3. Parallel with step 1.
 3. Define note naming/metadata convention (timestamp + short id + optional title) to avoid collisions and keep traceability. Depends on steps 1-2.
 4. Add defensive error mapping and concise logging to all note commands. Parallel with steps 1-3.
+5. Execute iterative stage gates after each Phase 1B stage and only proceed on pass. Detailed gate criteria live in plans/phase1B.md.
+6. Unit tests at Stage 1 (generateNoteFilename), Stage 2 (arg parsing + empty-content guard), and Stage 4 (parseCommand routing). Pod-dependent paths remain manual. Test runner: Node.js built-in node:test; no new dependencies.
 
 #### Phase 1C: Summarization slice
 Dependency: complete Phase 1B.
@@ -30,17 +33,23 @@ Dependency: complete Phase 1B.
 2. Wire summarize-notes command: read notes -> summarize -> persist outputs in summaries/. Depends on Phase 1B step 2 and Phase 1C step 1.
 3. Store summary linkage metadata to source notes (source URI/id + created time). Depends on step 2.
 4. Add failure-path handling: summarize failures should not corrupt note data; write failures should report actionable recovery steps. Depends on step 2.
+5. Unit tests for the summarizer adapter: mock provider returns expected output shape; real provider stub returns a typed response or throws on missing config; adapter interface contract is validated for both implementations. Target file: tests/agent/summarizer.test.ts.
 
 #### Phase 1D: Config + tests + docs
 Dependency: complete Phases 1A-1C.
 1. Add config loader with env/file support for Pod settings and summarizer provider selection. Include clear validation errors.
-2. Add minimal tests: unit tests for config and summarizer adapter; integration-lite tests for note listing/parsing with mocked Pod layer.
-3. Add one end-to-end manual verification script/checklist (add -> list -> summarize -> verify in Pod).
+2. Consolidate test coverage and fill gaps:
+   - Ensure tests/utils/config.test.ts covers Phase 1A config logic (may be written earlier in Phase 1A step 6).
+   - Ensure tests/utils/note-name.test.ts, tests/commands/add-note.test.ts, and tests/cli.test.ts are complete (written during Phase 1B).
+   - Ensure tests/agent/summarizer.test.ts covers both adapter implementations (written during Phase 1C).
+   - Add integration-lite tests for note listing/parsing using a mocked Pod layer (no live session required). Target file: tests/pod/client.test.ts.
+3. Add one end-to-end manual verification checklist: add -> list -> summarize -> verify in Pod.
 4. Update README and AGENTS with concrete commands/scripts and Phase 1 workflow notes. Depends on steps 1-3.
 
 ### Relevant files
 - README.md - source of truth for project goals, milestones, command scope, and learner-facing setup.
 - AGENTS.md - constraints for learning-first implementation style and documentation requirements.
+- plans/phase1B.md - detailed Phase 1B execution plan with stage-by-stage test gates.
 - src/cli.ts - planned command routing entrypoint.
 - src/pod/auth.ts - planned Solid auth/session bootstrap.
 - src/pod/client.ts - planned authenticated Pod operations wrapper.
