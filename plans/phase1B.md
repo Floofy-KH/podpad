@@ -17,6 +17,13 @@ Out of scope for this phase:
 
 ### Stage 1: Note naming utility
 
+Status: Complete.
+
+Completion notes:
+- Implemented `src/utils/note-name.ts` with `generateNoteFilename(title?: string): string`.
+- Added unit tests in `tests/utils/note-name.test.ts` for all Stage 1 cases.
+- Gate checks passed: `npm run check` and `npm test`.
+
 Implementation target:
 - Add src/utils/note-name.ts.
 - Export generateNoteFilename(title?: string): string.
