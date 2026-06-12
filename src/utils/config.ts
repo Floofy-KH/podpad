@@ -40,7 +40,7 @@ function normalizeContainerUrl(url: string): string {
   return url.endsWith("/") ? url : `${url}/`;
 }
 
-function parseTokenType(raw: string | undefined): SolidTokenType {
+export function parseTokenType(raw: string | undefined): SolidTokenType {
   if (!raw) {
     return "DPoP";
   }
@@ -53,7 +53,7 @@ function parseTokenType(raw: string | undefined): SolidTokenType {
     "SOLID_TOKEN_TYPE must be either DPoP or Bearer."
   ]);
 }
-  function parseNonNegativeInt(
+export function parseNonNegativeInt(
     name: string,
     raw: string | undefined,
     defaultValue: number

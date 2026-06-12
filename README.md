@@ -31,6 +31,7 @@ Phase 0 establishes a minimal TypeScript CLI scaffold for learning and for the n
 - npm run dev -- phase0-check
 - npm run check
 - npm run build
+- npm test
 
 ## Phase 1A: Solid Connectivity Foundation
 
