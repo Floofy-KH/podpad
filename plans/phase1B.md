@@ -65,6 +65,21 @@ Suggested verification for this gate:
 
 ### Stage 2: add-note command
 
+Status: Complete.
+
+Completion notes:
+- Implemented `src/commands/add-note.ts` with stdin reading, title parsing, and Pod writes.
+- Added unit tests in `tests/commands/add-note.test.ts` covering title parsing, empty content rejection, and session isolation.
+- Gate checks passed: `npm run check` and `npm test`.
+- Manual verification:
+  - Non-empty stdin successfully creates notes in notes/ container.
+  - Title flags (--title, -t) correctly generate filename slugs.
+  - Empty stdin is rejected before session creation with clear error.
+  - Missing env vars map through ConfigError with readable details.
+  - Pod write confirmed with fresh refresh token:
+    - Example no-title: `20260612T144745Z_6b0efa.txt`
+    - Example with-title: `20260612T144908Z_996cfc_my-phase-1b-note.txt`
+
 Implementation target:
 - Add src/commands/add-note.ts.
 - Read content from stdin.
