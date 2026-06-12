@@ -9,7 +9,11 @@
     "check": "tsc --noEmit -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
-    "test": "node --require tsx/cjs --test tests/**/*.test.ts"
+    "test": "node --require tsx/cjs --test tests/**/*.test.ts",
+    "auth:register": "python scripts/register_client.py",
+    "auth:code": "python scripts/request_auth_code.py",
+    "auth:token": "python scripts/exchange_auth_code.py",
+    "auth:check": "python scripts/load_env_and_run.py -- npm run dev -- connectivity-check"
   },
   "engines": {
     "node": ">=20.11.0"
