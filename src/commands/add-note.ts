@@ -1,13 +1,13 @@
 import { createAuthenticatedSession } from "../pod/auth";
 import { PodClient } from "../pod/client";
 import type { AuthSession } from "../pod/session";
-import { ConfigError, loadPhase1AConfigFromEnv, type Phase1AConfig } from "../utils/config";
+import { ConfigError, loadConfigFromEnv, type SolidConfig } from "../utils/config";
 import { logError, logInfo, logSuccess } from "../utils/logger";
 import { generateNoteFilename } from "../utils/note-name";
 
 export interface AddNoteDeps {
   readStdin: () => Promise<string>;
-  loadConfig: () => Phase1AConfig;
+  loadConfig: () => SolidConfig;
   createAuthenticatedSession: typeof createAuthenticatedSession;
   createPodClient: (session: AuthSession) => Pick<PodClient, "writeTextResource">;
   generateNoteFilename: typeof generateNoteFilename;
@@ -15,7 +15,7 @@ export interface AddNoteDeps {
 
 const defaultDeps: AddNoteDeps = {
   readStdin,
-  loadConfig: loadPhase1AConfigFromEnv,
+  loadConfig: loadConfigFromEnv,
   createAuthenticatedSession,
   createPodClient: (session) => new PodClient(session),
   generateNoteFilename

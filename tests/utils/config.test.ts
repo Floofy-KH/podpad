@@ -4,7 +4,7 @@
  * These tests cover three exported functions:
  *   - parseTokenType: validates the SOLID_TOKEN_TYPE value
  *   - parseNonNegativeInt: validates integer env var values
- *   - loadPhase1AConfigFromEnv: reads and validates the full Phase 1A config from env
+ *   - loadConfigFromEnv: reads and validates the full Solid config from env
  *
  * No Solid Pod session or network access is required.
  * Test runner: Node.js built-in node:test (no extra dependencies).
@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 
 import {
   ConfigError,
-  loadPhase1AConfigFromEnv,
+  loadConfigFromEnv,
   parseNonNegativeInt,
   parseTokenType
 } from "../../src/utils/config";
@@ -88,10 +88,10 @@ describe("parseNonNegativeInt", () => {
 });
 
 // ---------------------------------------------------------------------------
-// loadPhase1AConfigFromEnv
+// loadConfigFromEnv
 // ---------------------------------------------------------------------------
 
-// All env var keys read by loadPhase1AConfigFromEnv.
+// All env var keys read by loadConfigFromEnv.
 const ALL_ENV_VARS = [
   "SOLID_OIDC_ISSUER",
   "SOLID_CLIENT_ID",
@@ -114,7 +114,7 @@ const REQUIRED_DEFAULTS: Record<string, string> = {
   SOLID_POD_BASE_URL: "https://pod.example/user/"
 };
 
-describe("loadPhase1AConfigFromEnv", () => {
+describe("loadConfigFromEnv", () => {
   // Snapshot env state once before the suite so it can be restored afterward.
   const savedEnv: Record<string, string | undefined> = {};
 
@@ -155,7 +155,7 @@ describe("loadPhase1AConfigFromEnv", () => {
   it("throws ConfigError listing all five missing required vars", () => {
     // No env vars set at all.
     assert.throws(
-      () => loadPhase1AConfigFromEnv(),
+      () => loadConfigFromEnv(),
       (err: unknown) => {
         assert.ok(err instanceof ConfigError, "expected ConfigError");
         assert.equal(err.details.length, 5, "expected one detail per missing var");
@@ -169,7 +169,7 @@ describe("loadPhase1AConfigFromEnv", () => {
     delete process.env["SOLID_CLIENT_ID"];
 
     assert.throws(
-      () => loadPhase1AConfigFromEnv(),
+      () => loadConfigFromEnv(),
       (err: unknown) => {
         assert.ok(err instanceof ConfigError, "expected ConfigError");
         assert.equal(err.details.length, 1);
@@ -183,7 +183,7 @@ describe("loadPhase1AConfigFromEnv", () => {
 
   it("returns a valid config when all required vars are present", () => {
     setRequired();
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.auth.oidcIssuer, REQUIRED_DEFAULTS.SOLID_OIDC_ISSUER);
     assert.equal(config.auth.clientId, REQUIRED_DEFAULTS.SOLID_CLIENT_ID);
     assert.equal(config.auth.clientSecret, REQUIRED_DEFAULTS.SOLID_CLIENT_SECRET);
@@ -194,14 +194,14 @@ describe("loadPhase1AConfigFromEnv", () => {
 
   it("defaults tokenType to DPoP when SOLID_TOKEN_TYPE is unset", () => {
     setRequired();
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.auth.tokenType, "DPoP");
   });
 
   it("applies Bearer tokenType when SOLID_TOKEN_TYPE is 'Bearer'", () => {
     setRequired();
     process.env.SOLID_TOKEN_TYPE = "Bearer";
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.auth.tokenType, "Bearer");
   });
 
@@ -209,7 +209,7 @@ describe("loadPhase1AConfigFromEnv", () => {
     setRequired();
     process.env.SOLID_TOKEN_TYPE = "INVALID";
     assert.throws(
-      () => loadPhase1AConfigFromEnv(),
+      () => loadConfigFromEnv(),
       (err: unknown) => {
         assert.ok(err instanceof ConfigError, "expected ConfigError");
         return true;
@@ -221,7 +221,7 @@ describe("loadPhase1AConfigFromEnv", () => {
 
   it("defaults maxRetries to 2 and retryDelayMs to 2000", () => {
     setRequired();
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.auth.maxRetries, 2);
     assert.equal(config.auth.retryDelayMs, 2000);
   });
@@ -230,7 +230,7 @@ describe("loadPhase1AConfigFromEnv", () => {
     setRequired();
     process.env.SOLID_AUTH_MAX_RETRIES = "5";
     process.env.SOLID_AUTH_RETRY_DELAY_MS = "500";
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.auth.maxRetries, 5);
     assert.equal(config.auth.retryDelayMs, 500);
   });
@@ -239,7 +239,7 @@ describe("loadPhase1AConfigFromEnv", () => {
     setRequired();
     process.env.SOLID_AUTH_MAX_RETRIES = "not-a-number";
     assert.throws(
-      () => loadPhase1AConfigFromEnv(),
+      () => loadConfigFromEnv(),
       (err: unknown) => {
         assert.ok(err instanceof ConfigError, "expected ConfigError");
         return true;
@@ -251,13 +251,13 @@ describe("loadPhase1AConfigFromEnv", () => {
 
   it("normalizes podBaseUrl to end with /", () => {
     setRequired({ SOLID_POD_BASE_URL: "https://pod.example/user" }); // no trailing slash
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.ok(config.pod.podBaseUrl.endsWith("/"));
   });
 
   it("derives default container URLs from podBaseUrl", () => {
     setRequired({ SOLID_POD_BASE_URL: "https://pod.example/user/" });
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.pod.notesContainerUrl, "https://pod.example/user/notes/");
     assert.equal(config.pod.summariesContainerUrl, "https://pod.example/user/summaries/");
   });
@@ -266,7 +266,7 @@ describe("loadPhase1AConfigFromEnv", () => {
     setRequired();
     process.env.SOLID_NOTES_CONTAINER_URL = "https://pod.example/my-notes"; // no trailing slash
     process.env.SOLID_SUMMARIES_CONTAINER_URL = "https://pod.example/my-summaries/"; // already has slash
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
     assert.equal(config.pod.notesContainerUrl, "https://pod.example/my-notes/");
     assert.equal(config.pod.summariesContainerUrl, "https://pod.example/my-summaries/");
   });

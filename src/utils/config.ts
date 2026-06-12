@@ -16,7 +16,7 @@ export interface PodConfig {
   summariesContainerUrl: string;
 }
 
-export interface Phase1AConfig {
+export interface SolidConfig {
   auth: SolidAuthConfig;
   pod: PodConfig;
 }
@@ -70,7 +70,7 @@ export function parseNonNegativeInt(
     return value;
   }
 
-export function loadPhase1AConfigFromEnv(): Phase1AConfig {
+export function loadConfigFromEnv(): SolidConfig {
   const errors: string[] = [];
 
   const oidcIssuer = requiredEnv("SOLID_OIDC_ISSUER");

@@ -2,7 +2,7 @@ import { createAuthenticatedSession } from "../pod/auth";
 import { bootstrapPodContainers } from "../pod/bootstrap";
 import { PodClient } from "../pod/client";
 import type { AuthSession } from "../pod/session";
-import { ConfigError, loadPhase1AConfigFromEnv } from "../utils/config";
+import { ConfigError, loadConfigFromEnv } from "../utils/config";
 import { logError, logInfo, logSuccess } from "../utils/logger";
 
 function sleep(ms: number): Promise<void> {
@@ -30,7 +30,7 @@ export async function runConnectivityCheck(): Promise<void> {
   let session: AuthSession | undefined;
 
   try {
-    const config = loadPhase1AConfigFromEnv();
+    const config = loadConfigFromEnv();
 
     logInfo("Starting Solid authentication...");
     session = await createAuthenticatedSession(config.auth);
