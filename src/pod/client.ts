@@ -1,9 +1,9 @@
-import { Session } from "@inrupt/solid-client-authn-node";
+import type { AuthSession } from "./session";
 
 export class PodClient {
   private readonly fetchFn: typeof fetch;
 
-  constructor(private readonly session: Session) {
+  constructor(private readonly session: AuthSession) {
     this.fetchFn = session.fetch;
   }
 

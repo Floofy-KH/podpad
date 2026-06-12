@@ -1,6 +1,7 @@
 import { Session } from "@inrupt/solid-client-authn-node";
 
 import { SolidAuthConfig } from "../utils/config";
+import type { AuthSession } from "./session";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -19,7 +20,7 @@ function isRetryableAuthError(error: unknown): boolean {
 
 export async function createAuthenticatedSession(
   authConfig: SolidAuthConfig
-): Promise<Session> {
+): Promise<AuthSession> {
   let lastError: unknown;
 
   for (let attempt = 0; attempt <= authConfig.maxRetries; attempt += 1) {

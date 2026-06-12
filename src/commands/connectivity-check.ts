@@ -1,6 +1,7 @@
 import { createAuthenticatedSession } from "../pod/auth";
 import { bootstrapPodContainers } from "../pod/bootstrap";
 import { PodClient } from "../pod/client";
+import type { AuthSession } from "../pod/session";
 import { ConfigError, loadPhase1AConfigFromEnv } from "../utils/config";
 import { logError, logInfo, logSuccess } from "../utils/logger";
 
@@ -26,7 +27,7 @@ function printConfigHelp(): void {
 }
 
 export async function runConnectivityCheck(): Promise<void> {
-  let session: { logout: () => Promise<void> } | undefined;
+  let session: AuthSession | undefined;
 
   try {
     const config = loadPhase1AConfigFromEnv();
