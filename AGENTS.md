@@ -35,6 +35,7 @@ This file provides repository-specific guidance for AI coding agents.
 ## Commands And Validation
 
 - Canonical scripts, setup steps, and tooling docs live in [README.md](README.md).
+- Before running Solid connectivity or other Pod-affecting CLI commands, load values from `.env` into the current terminal session so required environment variables are present.
 
 ## Agent Behavior
 
