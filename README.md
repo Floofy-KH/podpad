@@ -15,7 +15,7 @@ This project is intended to help learn:
 
 Initial scope is intentionally small and desktop-developer friendly:
 - CLI-first workflow
-- Optional private Codespaces web screen for phone testing
+- Optional private Codespaces web screen for browser-based testing on any device
 - No production deployment or infrastructure setup
 - Minimal dependencies and moving parts
 
@@ -65,12 +65,12 @@ Optional environment variables:
 - SOLID_NOTES_CONTAINER_URL
 - SOLID_SUMMARIES_CONTAINER_URL
 
-## Phone Testing (GitHub Codespaces)
+## Browser Testing (GitHub Codespaces)
 
-The optional mobile-friendly web screen lets you try adding and listing notes from a phone browser. It runs inside a Codespace; the forwarded port is configured as **private** and is not a permanent hosted app.
+The optional responsive web screen lets you try adding and listing notes from a browser on any device. It runs inside a Codespace; the forwarded port is configured as **private** and is not a permanent hosted app.
 
 1. Create a Codespace for this repository.
-2. Wait for setup and the PodPad page to open. If it does not, open the forwarded **PodPad phone demo** port from the Ports panel.
+2. Wait for setup and the PodPad page to open. If it does not, open the forwarded **PodPad web demo** port from the Ports panel.
 3. Start in demo mode: add and list sample notes without Solid credentials. Demo notes are kept in server memory and disappear when the app restarts.
 4. Stop the Codespace when finished.
 

@@ -7,7 +7,7 @@
   "forwardPorts": [4173],
   "portsAttributes": {
     "4173": {
-      "label": "PodPad phone demo",
+      "label": "PodPad web demo",
       "onAutoForward": "openBrowser",
       "visibility": "private"
     }
