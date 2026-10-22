@@ -1,0 +1,14 @@
+{
+  "name": "PodPad",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bookworm",
+  "postCreateCommand": "npm ci",
+  "postStartCommand": "npm run web > /tmp/podpad-web.log 2>&1 &",
+  "forwardPorts": [4173],
+  "portsAttributes": {
+    "4173": {
+      "label": "PodPad phone demo",
+      "onAutoForward": "openBrowser",
+      "visibility": "private"
+    }
+  }
+}
