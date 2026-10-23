@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "check": "tsc --noEmit -p tsconfig.json",
     "dev": "tsx src/cli.ts",
+    "web": "tsx src/web/server.ts",
     "start": "node dist/cli.js",
     "test": "node --require tsx/cjs --test tests/**/*.test.ts",
     "auth:register": "python scripts/register_client.py",

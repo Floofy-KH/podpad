@@ -15,7 +15,8 @@ This project is intended to help learn:
 
 Initial scope is intentionally small and desktop-developer friendly:
 - CLI-first workflow
-- No deployment or infrastructure setup yet
+- Optional private Codespaces web screen for browser-based testing on any device
+- No production deployment or infrastructure setup
 - Minimal dependencies and moving parts
 
 ## Phase 0 Baseline
@@ -64,6 +65,23 @@ Optional environment variables:
 - SOLID_NOTES_CONTAINER_URL
 - SOLID_SUMMARIES_CONTAINER_URL
 
+## Browser Testing (GitHub Codespaces)
+
+The optional responsive web screen lets you try adding and listing notes from a browser on any device. It runs inside a Codespace; the forwarded port is configured as **private** and is not a permanent hosted app.
+
+1. Create a Codespace for this repository.
+2. Wait for setup and the PodPad page to open. If it does not, open the forwarded **PodPad web demo** port from the Ports panel.
+3. Start in demo mode: add and list sample notes without Solid credentials. Demo notes are kept in server memory and disappear when the app restarts.
+4. Stop the Codespace when finished.
+
+If port 4173 is not forwarded, check the startup output in the Codespace terminal with `cat /tmp/podpad-web.log`. You can start the app manually with `npm run web`; Codespaces will forward the port when it detects the server.
+
+The web screen defaults to demo mode. To connect a dedicated test Pod, add the `SOLID_OIDC_ISSUER`, `SOLID_CLIENT_ID`, `SOLID_CLIENT_SECRET`, `SOLID_REFRESH_TOKEN`, `SOLID_POD_BASE_URL`, and `PODPAD_WEB_MODE` values as Codespaces secrets (`PODPAD_WEB_MODE` should be `solid`), make them available to this repository's Codespaces, then stop and restart the Codespace. Do not put credentials in browser code or commit them to the repository. Use a test identity and Pod location rather than your main Pod.
+
+To run the web screen locally, use `npm run web` and open http://127.0.0.1:4173. For a live Pod, set `PODPAD_WEB_MODE=solid` and load the Solid environment variables before starting it. The CLI remains available separately.
+
+The web API and Solid credentials stay on the server; the browser receives only connection status and note titles/timestamps. The Codespaces port should remain private.
+
 ## Planned Features (Phase 1)
 
 - Add note
@@ -78,7 +96,7 @@ Suggested command ideas:
 
 ## Non-Goals (for now)
 
-- No web frontend required
+- No production-ready web frontend
 - No production infrastructure
 - No multi-user support
 - No advanced policy management yet (ACP/WAC deep dive later)
