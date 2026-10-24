@@ -78,7 +78,9 @@ export class PodClient {
     }
 
     const turtleBody = await response.text();
-    return this.extractContainedUrls(turtleBody);
+    const rawUrls = this.extractContainedUrls(turtleBody);
+    // Some servers return relative names in ldp:contains — resolve them
+    return rawUrls.map((url) => new URL(url, containerUrl).href);
   }
 
   async readTextResource(resourceUrl: string): Promise<string> {

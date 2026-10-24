@@ -1,10 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { createAuthenticatedSession } from "../pod/auth";
 import { PodClient } from "../pod/client";
 import type { AuthSession } from "../pod/session";
-import { loadConfigFromEnv, type SolidConfig } from "../utils/config";
+import { ConfigError, loadConfigFromEnv, type SolidConfig } from "../utils/config";
 import { generateNoteFilename } from "../utils/note-name";
 
 const MAX_REQUEST_BYTES = 32_000;
@@ -64,10 +64,11 @@ const webAssets: Record<string, { content: Buffer; contentType: string }> = {
 export function createWebServer(deps: WebServerDeps): Server {
   return createServer((request, response) => {
     void handleRequest(request, response, deps).catch((error: unknown) => {
+      const status = error instanceof RequestError ? error.status : 500;
+      const message = error instanceof RequestError ? error.message : "The server could not complete that request.";
+      // eslint-disable-next-line no-console
+      console.error(`[${request.method} ${request.url}] ${status}: ${message}`, error);
       if (!response.headersSent) {
-        const status = error instanceof RequestError ? error.status : 500;
-        const message =
-          error instanceof RequestError ? error.message : "The server could not complete that request.";
         sendJson(response, status, { error: message });
       }
     });
@@ -87,7 +88,7 @@ async function handleRequest(
       "Content-Type": asset.contentType,
       "Cache-Control": "no-store",
       "Content-Security-Policy":
-        "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
+        "default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'self'; frame-ancestors 'none'",
       "X-Content-Type-Options": "nosniff",
       "X-Frame-Options": "DENY",
       "Referrer-Policy": "no-referrer"
@@ -172,6 +173,7 @@ async function handleRequest(
 
 async function listPodNotes(deps: WebServerDeps): Promise<WebNote[]> {
   return withPodClient(deps, async (client, config) => {
+    await client.ensureContainer(config.pod.notesContainerUrl);
     const urls = await client.listResourceUrls(config.pod.notesContainerUrl);
     return urls
       .filter(isPreviewableNoteUrl)
@@ -242,8 +244,27 @@ async function withPodClient<T>(
   deps: WebServerDeps,
   operation: (client: WebPodClient, config: SolidConfig) => Promise<T>
 ): Promise<T> {
-  const config = deps.loadConfig();
-  const session = await deps.createAuthenticatedSession(config.auth);
+  let config: SolidConfig;
+  try {
+    config = deps.loadConfig();
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw new RequestError(
+        "Solid configuration is incomplete. Check that SOLID_* environment variables are set.",
+        503
+      );
+    }
+    throw error;
+  }
+
+  let session: AuthSession;
+  try {
+    session = await deps.createAuthenticatedSession(config.auth);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new RequestError(`Solid authentication failed: ${message}`, 503);
+  }
+
   try {
     return await operation(deps.createPodClient(session), config);
   } finally {
@@ -338,7 +359,31 @@ function webModeFromEnv(): WebMode {
   return mode;
 }
 
+function loadDotenv(filePath: string): void {
+  const envPath = resolve(filePath);
+  let text: string;
+  try {
+    text = readFileSync(envPath, "utf8");
+  } catch {
+    return;
+  }
+
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    const value = line.slice(eq + 1).trim();
+    if (!(key in process.env)) {
+      process.env[key] = value;
+    }
+  }
+}
+
 function start(): void {
+  loadDotenv(".env");
+
   const mode = webModeFromEnv();
   const port = Number(process.env.PORT ?? 4173);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -356,6 +401,18 @@ function start(): void {
   server.listen(port, host, () => {
     console.log(`PodPad web app (${mode}) listening on http://${host}:${port}`);
   });
+
+  function shutdown(signal: string): void {
+    console.log(`\nReceived ${signal}. Shutting down...`);
+    server.close(() => {
+      process.exit(0);
+    });
+    // Force exit if graceful close hangs
+    setTimeout(() => process.exit(0), 5000).unref();
+  }
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
 
 if (require.main === module) {
