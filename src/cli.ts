@@ -1,7 +1,9 @@
 const COMMANDS = {
   HELP: "help",
   PHASE0_CHECK: "phase0-check",
-  CONNECTIVITY_CHECK: "connectivity-check"
+  CONNECTIVITY_CHECK: "connectivity-check",
+  ADD_NOTE: "add-note",
+  LIST_NOTES: "list-notes"
 } as const;
 
 type Command = (typeof COMMANDS)[keyof typeof COMMANDS];
@@ -16,6 +18,8 @@ function printHelp(): void {
   console.log(`  ${COMMANDS.HELP}          Show this help text`);
   console.log(`  ${COMMANDS.PHASE0_CHECK}  Confirm scaffold is wired`);
   console.log(`  ${COMMANDS.CONNECTIVITY_CHECK}  Validate auth + Pod connectivity`);
+  console.log(`  ${COMMANDS.ADD_NOTE}      Add a note from stdin to your Pod`);
+  console.log(`  ${COMMANDS.LIST_NOTES}    List notes from your Pod`);
 }
 
 function runPhase0Check(): void {
@@ -34,6 +38,14 @@ function parseCommand(argv: string[]): Command {
     return COMMANDS.CONNECTIVITY_CHECK;
   }
 
+  if (command === COMMANDS.ADD_NOTE) {
+    return COMMANDS.ADD_NOTE;
+  }
+
+  if (command === COMMANDS.LIST_NOTES) {
+    return COMMANDS.LIST_NOTES;
+  }
+
   return COMMANDS.HELP;
 }
 
@@ -48,6 +60,18 @@ async function main(argv: string[]): Promise<void> {
   if (command === COMMANDS.CONNECTIVITY_CHECK) {
     const { runConnectivityCheck } = await import("./commands/connectivity-check");
     await runConnectivityCheck();
+    return;
+  }
+
+  if (command === COMMANDS.ADD_NOTE) {
+    const { runAddNote } = await import("./commands/add-note");
+    await runAddNote(argv);
+    return;
+  }
+
+  if (command === COMMANDS.LIST_NOTES) {
+    const { runListNotes } = await import("./commands/list-notes");
+    await runListNotes();
     return;
   }
 

@@ -30,6 +30,57 @@ describe("parseTitle", () => {
 });
 
 describe("runAddNote", () => {
+  it("writes a note to the Pod and logs success", async () => {
+    let writeCalled = false;
+    let writtenUrl = "";
+    let writtenContent = "";
+
+    const fakeSession: AuthSession = {
+      fetch: globalThis.fetch,
+      logout: async () => {
+        return;
+      },
+      info: {
+        webId: "https://example.test/profile/card#me"
+      }
+    };
+
+    const deps: AddNoteDeps = {
+      readStdin: async () => "Hello, Solid!",
+      loadConfig: () => ({
+        auth: {
+          oidcIssuer: "https://issuer.test",
+          clientId: "client-id",
+          clientSecret: "client-secret",
+          refreshToken: "refresh-token",
+          tokenType: "DPoP",
+          maxRetries: 0,
+          retryDelayMs: 0
+        },
+        pod: {
+          podBaseUrl: "https://pod.example/user/",
+          notesContainerUrl: "https://pod.example/user/notes/",
+          summariesContainerUrl: "https://pod.example/user/summaries/"
+        }
+      }),
+      createAuthenticatedSession: async () => fakeSession as never,
+      createPodClient: () => ({
+        writeTextResource: async (url: string, content: string) => {
+          writeCalled = true;
+          writtenUrl = url;
+          writtenContent = content;
+        }
+      }),
+      generateNoteFilename: () => "20231001T120000Z_abc123_test-note.txt"
+    };
+
+    await runAddNote(["node", "src/cli.ts", "add-note", "--title", "Test Note"], deps);
+
+    assert.equal(writeCalled, true);
+    assert.equal(writtenUrl, "https://pod.example/user/notes/20231001T120000Z_abc123_test-note.txt");
+    assert.equal(writtenContent, "Hello, Solid!");
+  });
+
   it("rejects empty content before any session is created", async () => {
     let createSessionCalled = false;
 
