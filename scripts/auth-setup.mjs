@@ -81,17 +81,23 @@ function sha256B64url(input) {
 
 function openBrowser(url) {
   const platform = process.platform;
+  let child;
   if (platform === "win32") {
     // Use rundll32 to bypass cmd.exe shell parsing (avoids & truncation issues)
-    spawn("rundll32", ["url.dll,FileProtocolHandler", url], {
+    child = spawn("rundll32", ["url.dll,FileProtocolHandler", url], {
       detached: true,
       stdio: "ignore",
     });
   } else if (platform === "darwin") {
-    spawn("open", [url], { detached: true, stdio: "ignore" });
+    child = spawn("open", [url], { detached: true, stdio: "ignore" });
   } else {
-    spawn("xdg-open", [url], { detached: true, stdio: "ignore" });
+    child = spawn("xdg-open", [url], { detached: true, stdio: "ignore" });
   }
+
+  child.on("error", (err) => {
+    console.warn(`  Could not open browser automatically (${err.message}).`);
+    console.log(`  Please open this URL manually:\n  ${url}`);
+  });
 }
 
 function requestJson(targetUrl, options = {}) {
@@ -219,8 +225,36 @@ async function registerClient() {
 // 2. Start callback server + open browser
 // ------------------------------------------------------------------
 
-function startCallbackServer(expectedState) {
+function startCallbackServer(expectedState, timeoutMs = 5 * 60 * 1000) {
   return new Promise((resolve, reject) => {
+    let resolved = false;
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        fail(
+          new Error(
+            `Timed out waiting for authorization callback after ${timeoutMs / 1000}s. ` +
+              "You can try running the script again."
+          )
+        );
+      }
+    }, timeoutMs);
+
+    function finish(value) {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        server.close(() => resolve(value));
+      }
+    }
+
+    function fail(err) {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        server.close(() => reject(err));
+      }
+    }
+
     const server = http.createServer((req, res) => {
       try {
         const url = new URL(req.url, `http://127.0.0.1:${ARGS.port}`);
@@ -235,9 +269,7 @@ function startCallbackServer(expectedState) {
           res.end(
             `<html><body><h1>Authorization failed</h1><p>${error}${errorDescription ? `: ${errorDescription}` : ""}</p></body></html>`
           );
-          server.close(() =>
-            reject(new Error(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ""}`))
-          );
+          fail(new Error(`OAuth error: ${error}${errorDescription ? ` - ${errorDescription}` : ""}`));
           return;
         }
 
@@ -250,7 +282,7 @@ function startCallbackServer(expectedState) {
         if (state !== expectedState) {
           res.writeHead(400, { "Content-Type": "text/html" });
           res.end("<html><body><h1>State mismatch</h1></body></html>");
-          server.close(() => reject(new Error("State mismatch in callback.")));
+          fail(new Error("State mismatch in callback."));
           return;
         }
 
@@ -258,11 +290,11 @@ function startCallbackServer(expectedState) {
         res.end(
           "<html><body><h1>Authentication successful</h1><p>You can close this tab and return to the terminal.</p></body></html>"
         );
-        server.close(() => resolve(code));
+        finish(code);
       } catch (err) {
         res.writeHead(500);
         res.end("Internal error");
-        server.close(() => reject(err));
+        fail(err);
       }
     });
 
@@ -271,7 +303,7 @@ function startCallbackServer(expectedState) {
     });
 
     server.on("error", (err) => {
-      reject(new Error(`Failed to start callback server: ${err.message}`));
+      fail(new Error(`Failed to start callback server: ${err.message}`));
     });
   });
 }
@@ -411,30 +443,45 @@ async function writeEnv(values) {
     console.log(`\nCreating ${ARGS.envFile}...`);
   }
 
-  const lines = existing.split("\n");
-  const updated = new Map();
+  const lines = existing.length > 0 ? existing.split("\n") : [];
+  const entries = [];
+  const seenKeys = new Set();
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
-      updated.set(Math.random(), line); // preserve comments/blank lines as-is (loose key)
+    if (!trimmed) {
+      entries.push({ type: "blank", line });
+      continue;
+    }
+    if (trimmed.startsWith("#")) {
+      entries.push({ type: "comment", line });
       continue;
     }
     const eq = trimmed.indexOf("=");
     if (eq === -1) {
-      updated.set(Math.random(), line);
+      entries.push({ type: "unknown", line });
       continue;
     }
     const key = trimmed.slice(0, eq).trim();
-    updated.set(key, line);
+    entries.push({ type: "kv", key, line });
+    seenKeys.add(key);
   }
 
   // Overwrite or add our keys
   for (const [key, value] of Object.entries(values)) {
-    updated.set(key, `${key}=${value}`);
+    if (seenKeys.has(key)) {
+      for (const entry of entries) {
+        if (entry.type === "kv" && entry.key === key) {
+          entry.line = `${key}=${value}`;
+        }
+      }
+    } else {
+      entries.push({ type: "kv", key, line: `${key}=${value}` });
+      seenKeys.add(key);
+    }
   }
 
-  const output = [...updated.values()].join("\n") + "\n";
+  const output = entries.map((e) => e.line).join("\n") + "\n";
   fs.writeFileSync(envPath, output, "utf8");
 
   console.log("  Saved:");

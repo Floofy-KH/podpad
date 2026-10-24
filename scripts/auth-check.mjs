@@ -47,7 +47,14 @@ function loadDotenv(filePath) {
     const eq = line.indexOf("=");
     if (eq === -1) continue;
     const key = line.slice(0, eq).trim();
-    const value = line.slice(eq + 1).trim();
+    let value = line.slice(eq + 1).trim();
+    // Strip matching surrounding quotes
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
     process.env[key] = value;
   }
 }
