@@ -174,6 +174,7 @@ describe("Solid-backed phone web server", () => {
     let readUrl = "";
     let loggedOut = false;
     const noteUrl = "https://pod.example/alex/notes/20261022T120000Z_abcdef_phone-test.txt";
+    const unrelatedNoteUrl = "https://pod.example/alex/notes/shopping.txt";
     const session: AuthSession = {
       fetch: globalThis.fetch,
       logout: async () => {
@@ -193,7 +194,7 @@ describe("Solid-backed phone web server", () => {
         readUrl = url;
         return "Saved on the server.";
       },
-      listResourceUrls: async () => (writtenUrl ? [noteUrl] : [])
+      listResourceUrls: async () => [noteUrl, unrelatedNoteUrl]
     };
     const liveDeps: WebServerDeps = {
       mode: "solid",
@@ -214,6 +215,13 @@ describe("Solid-backed phone web server", () => {
       assert.equal(status.status, 200);
       assert.equal(readableUrl, config.pod.podBaseUrl);
 
+      const listed = await fetch(`${baseUrl}/api/notes`);
+      const listedResult = (await listed.json()) as {
+        notes: Array<{ id: string }>;
+      };
+      assert.equal(listed.status, 200);
+      assert.deepEqual(listedResult.notes.map(({ id }) => id), ["20261022T120000Z_abcdef_phone-test.txt"]);
+
       const response = await fetch(`${baseUrl}/api/notes`, {
         method: "POST",
         headers: {
@@ -223,12 +231,13 @@ describe("Solid-backed phone web server", () => {
         body: JSON.stringify({ title: "Phone test", content: "Saved on the server." })
       });
       const result = (await response.json()) as {
-        notes: Array<{ title: string }>;
+        notes: Array<{ id: string; title: string }>;
       };
 
       assert.equal(response.status, 201);
       assert.equal(writtenUrl, `${config.pod.notesContainerUrl}20261022T120000Z_abcdef_phone-test.txt`);
       assert.equal(result.notes[0]?.title, "phone test");
+      assert.deepEqual(result.notes.map(({ id }) => id), ["20261022T120000Z_abcdef_phone-test.txt"]);
 
       const preview = await fetch(`${baseUrl}/api/notes/20261022T120000Z_abcdef_phone-test.txt`);
       assert.equal(preview.status, 200);

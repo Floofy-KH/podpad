@@ -158,7 +158,7 @@ async function handleRequest(
       await client.writeTextResource(`${config.pod.notesContainerUrl}${filename}`, content);
       const urls = await client.listResourceUrls(config.pod.notesContainerUrl);
       return urls
-        .filter((url) => url.toLowerCase().endsWith(".txt"))
+        .filter(isPreviewableNoteUrl)
         .sort((left, right) => right.localeCompare(left))
         .slice(0, MAX_NOTES)
         .map(noteFromUrl);
@@ -174,11 +174,15 @@ async function listPodNotes(deps: WebServerDeps): Promise<WebNote[]> {
   return withPodClient(deps, async (client, config) => {
     const urls = await client.listResourceUrls(config.pod.notesContainerUrl);
     return urls
-      .filter((url) => url.toLowerCase().endsWith(".txt"))
+      .filter(isPreviewableNoteUrl)
       .sort((left, right) => right.localeCompare(left))
       .slice(0, MAX_NOTES)
       .map(noteFromUrl);
   });
+}
+
+function isPreviewableNoteUrl(resourceUrl: string): boolean {
+  return isNoteFilename(noteFromUrl(resourceUrl).id);
 }
 
 function noteFromUrl(resourceUrl: string): WebNote {
