@@ -14,7 +14,8 @@
     "auth:register": "python scripts/register_client.py",
     "auth:code": "python scripts/request_auth_code.py",
     "auth:token": "python scripts/exchange_auth_code.py",
-    "auth:check": "python scripts/load_env_and_run.py -- npm run dev -- connectivity-check"
+    "auth:check": "node scripts/auth-check.mjs",
+    "auth:setup": "node scripts/auth-setup.mjs"
   },
   "engines": {
     "node": ">=20.11.0"
