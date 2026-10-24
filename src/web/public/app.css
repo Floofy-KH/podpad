@@ -1,0 +1,51 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #f5f4ef;
+  color: #192b27;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px 16px 48px; }
+main { max-width: 900px; margin: 0 auto; }
+h1 { margin: 0; font-size: 2rem; }
+h2 { margin: 28px 0 12px; font-size: 1.2rem; }
+#connection-heading { margin: 0 0 12px; }
+.subtitle { margin: 4px 0 20px; color: #52615b; }
+.card { padding: 18px; border: 1px solid #d9ded7; border-radius: 16px; background: #fff; }
+.status { display: flex; align-items: center; gap: 10px; }
+.dot { width: 11px; height: 11px; flex: 0 0 auto; border-radius: 50%; background: #a17620; }
+.dot.connected { background: #22845e; }
+.dot.error { background: #b33b35; }
+.mode { margin-left: auto; color: #52615b; font-size: .82rem; }
+label { display: block; margin: 14px 0 6px; font-weight: 650; }
+input, textarea { width: 100%; padding: 12px; border: 1px solid #aab7b0; border-radius: 10px; font: inherit; }
+textarea { min-height: 140px; resize: vertical; }
+button { width: 100%; margin-top: 14px; padding: 13px; border: 0; border-radius: 10px; background: #176b50; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+.message { min-height: 1.5em; margin: 10px 0 0; color: #52615b; }
+.note { padding: 14px 0; border-bottom: 1px solid #e3e7e2; }
+.note:last-child { border-bottom: 0; padding-bottom: 0; }
+.note-title { margin: 0 0 4px; font-weight: 700; overflow-wrap: anywhere; }
+.note-date { color: #64716b; font-size: .86rem; }
+.note-search { margin: 0 0 8px; }
+.note-list { display: grid; }
+.note-workspace { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+.note-workspace h2 { margin-top: 0; }
+.note-workspace section { min-width: 0; }
+.note { width: 100%; margin: 0; padding: 14px 0; border: 0; border-bottom: 1px solid #e3e7e2; border-radius: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.note:hover, .note[aria-pressed="true"] { color: #12563f; }
+.note[aria-pressed="true"] .note-title { text-decoration: underline; text-underline-offset: 3px; }
+.preview-content { margin: 16px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; }
+.empty { color: #64716b; }
+.demo-hint { margin: 16px 2px 0; color: #52615b; font-size: .88rem; }
+
+@media (min-width: 600px) {
+  body { padding-top: 40px; }
+  .card { padding: 22px; }
+}
+
+@media (max-width: 680px) {
+  .note-workspace { display: block; }
+  .note-workspace section + section { margin-top: 26px; }
+}

@@ -5,7 +5,7 @@
   "description": "CLI-first learning project for AI agents + Solid Pods.",
   "main": "dist/cli.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-web-assets.mjs",
     "check": "tsc --noEmit -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "web": "tsx src/web/server.ts",

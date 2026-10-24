@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4ef">
+  <title>PodPad</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>PodPad</h1>
+    <p class="subtitle">A little notes space for your Solid Pod.</p>
+    <section class="card" aria-labelledby="connection-heading">
+      <h2 id="connection-heading">Pod connection</h2>
+      <div class="status" role="status" aria-live="polite">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">Checking connection…</span>
+        <span class="mode" id="mode"></span>
+      </div>
+    </section>
+    <section aria-labelledby="new-note-heading">
+      <h2 id="new-note-heading">New note</h2>
+      <form class="card" id="note-form">
+        <label for="title">Title <span aria-hidden="true">(optional)</span></label>
+        <input id="title" name="title" maxlength="100" autocomplete="off">
+        <label for="content">Your note</label>
+        <textarea id="content" name="content" maxlength="5000" required></textarea>
+        <button id="save-button" type="submit">Save note</button>
+        <p class="message" id="message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+    <div class="note-workspace">
+      <section aria-labelledby="recent-heading">
+        <h2 id="recent-heading">Recent notes</h2>
+        <div class="card">
+          <label for="note-search">Find a note</label>
+          <input class="note-search" id="note-search" type="search" placeholder="Search titles" autocomplete="off">
+          <div class="note-list" id="notes" aria-live="polite"><p class="empty">Loading notes…</p></div>
+        </div>
+      </section>
+      <section aria-labelledby="preview-heading">
+        <h2 id="preview-heading">Preview</h2>
+        <div class="card" id="preview" aria-live="polite"><p class="empty">Choose a note to preview its contents.</p></div>
+      </section>
+    </div>
+    <p class="demo-hint" id="demo-hint" hidden>Demo mode keeps notes in memory; they disappear when the server restarts.</p>
+  </main>
+</body>
+</html>
