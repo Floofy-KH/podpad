@@ -118,20 +118,20 @@ async function handleRequest(
     return;
   }
 
-    if (request.method === "GET" && requestUrl.pathname.startsWith("/api/notes/")) {
-      let id: string;
-      try {
-        id = decodeURIComponent(requestUrl.pathname.slice("/api/notes/".length));
-      } catch {
-        throw new RequestError("Invalid note identifier.", 400);
-      }
-      if (!isNoteFilename(id)) {
-        throw new RequestError("Invalid note identifier.", 400);
-      }
-      const content = await readNoteContent(deps, id);
-      sendJson(response, 200, { content });
-      return;
+  if (request.method === "GET" && requestUrl.pathname.startsWith("/api/notes/")) {
+    let id: string;
+    try {
+      id = decodeURIComponent(requestUrl.pathname.slice("/api/notes/".length));
+    } catch {
+      throw new RequestError("Invalid note identifier.", 400);
     }
+    if (!isNoteFilename(id)) {
+      throw new RequestError("Invalid note identifier.", 400);
+    }
+    const content = await readNoteContent(deps, id);
+    sendJson(response, 200, { content });
+    return;
+  }
 
   if (request.method === "POST" && requestUrl.pathname === "/api/notes") {
     assertSameOrigin(request);
