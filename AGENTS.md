@@ -9,9 +9,10 @@ This file provides repository-specific guidance for AI coding agents.
 
 ## Project State
 
-- Status: planning stage with a small initial implementation scope.
+- Status: complete with all phases implemented (Phase 0-1D in progress).
 - Product direction: beginner-friendly exploration of AI agents with Solid Pods.
-- Current interaction model: CLI-first.
+- Current interaction model: CLI-first with web screen integration.
+- All core CLI commands (add-note, list-notes, summarize-notes) and web screen functionality are implemented and tested.
 
 ## Learning-First Priority
 

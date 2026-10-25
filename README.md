@@ -65,23 +65,6 @@ Optional environment variables:
 - SOLID_NOTES_CONTAINER_URL
 - SOLID_SUMMARIES_CONTAINER_URL
 
-## Browser Testing (GitHub Codespaces)
-
-The optional responsive web screen lets you try adding and listing notes from a browser on any device. It runs inside a Codespace; the forwarded port is configured as **private** and is not a permanent hosted app.
-
-1. Create a Codespace for this repository.
-2. Wait for setup and the PodPad page to open. If it does not, open the forwarded **PodPad web demo** port from the Ports panel.
-3. Start in demo mode: add and list sample notes without Solid credentials. Demo notes are kept in server memory and disappear when the app restarts.
-4. Stop the Codespace when finished.
-
-If port 4173 is not forwarded, check the startup output in the Codespace terminal with `cat /tmp/podpad-web.log`. You can start the app manually with `npm run web`; Codespaces will forward the port when it detects the server.
-
-The web screen defaults to demo mode. To connect a dedicated test Pod, add the `SOLID_OIDC_ISSUER`, `SOLID_CLIENT_ID`, `SOLID_CLIENT_SECRET`, `SOLID_REFRESH_TOKEN`, `SOLID_POD_BASE_URL`, and `PODPAD_WEB_MODE` values as Codespaces secrets (`PODPAD_WEB_MODE` should be `solid`), make them available to this repository's Codespaces, then stop and restart the Codespace. Do not put credentials in browser code or commit them to the repository. Use a test identity and Pod location rather than your main Pod.
-
-To run the web screen locally, use `npm run web` and open http://127.0.0.1:4173. For a live Pod, set `PODPAD_WEB_MODE=solid` and load the Solid environment variables before starting it. The CLI remains available separately.
-
-The web API and Solid credentials stay on the server; the browser receives only connection status and note titles/timestamps. The Codespaces port should remain private.
-
 ## Phase 1B Commands
 
 Once auth is configured, you can create and list notes in your Pod.
@@ -170,6 +153,21 @@ export OPENAI_BASE_URL=https://api.openai.com/v1
 - The new summary shows up in the **Recent summaries** list.
 - Click a summary to preview its generated content.
 
+### Web Mode
+
+The web screen supports two modes, controlled by the `PODPAD_WEB_MODE` environment variable:
+
+- **Demo mode** (`PODPAD_WEB_MODE=demo`, default): Run `npm run web` without additional configuration. Notes and summaries are stored in memory and disappear when the app restarts. This is great for learning the UI without a Solid Pod.
+- **Solid mode** (`PODPAD_WEB_MODE=solid`): Set `PODPAD_WEB_MODE=solid` and ensure your Solid environment variables (`SOLID_OIDC_ISSUER`, `SOLID_CLIENT_ID`, `SOLID_CLIENT_SECRET`, `SOLID_REFRESH_TOKEN`, `SOLID_POD_BASE_URL`) are loaded. Run `npm run web` to connect to your Pod. Notes and summaries are persisted to your Pod's `notes/` and `summaries/` containers.
+
+You can set the mode in your `.env` file:
+
+```
+PODPAD_WEB_MODE=solid
+```
+
+When running in a Codespace, add `PODPAD_WEB_MODE` as a repository secret and set it to `solid` to enable Solid mode. Do not commit credentials to the repository.
+
 ## Non-Goals (for now)
 
 - No production-ready web frontend
@@ -200,16 +198,22 @@ export OPENAI_BASE_URL=https://api.openai.com/v1
 - Add basic error handling/logging
 
 ### Milestone 3: Polish
-- Search/filter notes
+- End-to-end CLI workflow
 - Config file for provider/settings
-- Optional small local UI wrapper later
+- Web screen integration
 
-## Status
+## Phase 1D: Config + Tests + Docs
 
-- Phase 0 scaffold: complete
-- Phase 1A (Solid connectivity): complete
-- Phase 1B (add-note, list-notes): complete
-- Phase 1C (summarize-notes): complete
+This phase consolidates configuration loading, ensures test coverage across all commands, and updates documentation to match the working implementation.
+
+### Verification Checklist
+
+1. **Foundation checks**: authenticated session established, Pod root reachable, notes/ and summaries/ created idempotently
+2. **Command checks**: add-note creates unique resources; list-notes works for empty and non-empty containers; summarize-notes writes summary resources with source linkage
+3. **Summarization checks**: mock provider works offline; openai provider requires OPENAI_API_KEY; --limit correctly caps notes
+4. **Failure checks**: invalid config, auth failure, missing container, provider failure, and Pod write failure return actionable errors
+5. **Regression checks**: rerun bootstrap and summarize commands without duplicating/mutating unrelated data
+6. **Documentation checks**: README includes exact scripts, config steps, and first-run walkthrough
 
 ## Repeatable Auth Setup (Phase 1A)
 
