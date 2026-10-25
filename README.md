@@ -82,17 +82,41 @@ To run the web screen locally, use `npm run web` and open http://127.0.0.1:4173.
 
 The web API and Solid credentials stay on the server; the browser receives only connection status and note titles/timestamps. The Codespaces port should remain private.
 
-## Planned Features (Phase 1)
+## Phase 1B Commands
 
-- Add note
-- List notes
-- Summarize notes
-- Save summaries back to the Pod
+Once auth is configured, you can create and list notes in your Pod.
 
-Suggested command ideas:
-- add-note
-- list-notes
-- summarize-notes
+### Add a note
+
+Pipe content into `add-note` from stdin. An optional `--title` (or `-t`) sets a friendly slug in the filename.
+
+```bash
+# Add a note without a title
+echo "Hello, Solid world!" | npm run dev -- add-note
+
+# Add a note with a title
+echo "Learning about Pods today." | npm run dev -- add-note --title "Learning Notes"
+```
+
+What happens:
+- The CLI authenticates to your Pod.
+- A filename like `20231001T120000Z_abc123.txt` (or `20231001T120000Z_abc123_learning-notes.txt` with a title) is generated.
+- The note is written as a text resource into the `notes/` container.
+
+### List notes
+
+```bash
+npm run dev -- list-notes
+```
+
+What happens:
+- The CLI authenticates to your Pod.
+- It prints a count and a list of your notes, newest first.
+- Each line shows the title, creation date, and resource URL.
+
+### Still to come in Phase 1
+
+- `summarize-notes` — read notes, generate a summary, and save it to `summaries/`
 
 ## Non-Goals (for now)
 
@@ -130,8 +154,10 @@ Suggested command ideas:
 
 ## Status
 
-Project initialized in planning stage.
-Name selected: PodPad.
+- Phase 0 scaffold: complete
+- Phase 1A (Solid connectivity): complete
+- Phase 1B (add-note, list-notes): complete
+- Next: Phase 1C (summarize-notes)
 
 ## Repeatable Auth Setup (Phase 1A)
 

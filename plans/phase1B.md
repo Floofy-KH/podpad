@@ -165,6 +165,13 @@ Suggested verification for this gate:
 
 ### Stage 4: CLI integration
 
+Status: Complete.
+
+Completion notes:
+- Exported `parseCommand` from `src/cli.ts`.
+- Added `tests/cli.test.ts` covering all routing cases (add-note, list-notes, phase0-check, connectivity-check, help, unknown command, no command).
+- Gate checks passed: `npm run check` and `npm test`.
+
 Implementation target:
 - Update src/cli.ts:
   - Add add-note and list-notes command constants.
@@ -210,6 +217,15 @@ Suggested verification for this gate:
 ---
 
 ### Stage 5: README updates for Phase 1B
+
+Status: Complete.
+
+Completion notes:
+- Replaced the "Planned Features (Phase 1)" section with a concrete "Phase 1B Commands" section showing `add-note` and `list-notes` usage.
+- Added copy-pasteable examples for stdin piping and the `--title` / `-t` flags.
+- Updated the Status section to reflect Phase 1B completion.
+- Verified README examples align with help output.
+- Gate checks passed: `npm run check` and `npm test`.
 
 Implementation target:
 - Update README.md with Phase 1B commands and usage examples.

@@ -27,7 +27,7 @@ function runPhase0Check(): void {
   console.log("Next: implement Solid auth + Pod client in Phase 1A.");
 }
 
-function parseCommand(argv: string[]): Command {
+export function parseCommand(argv: string[]): Command {
   const command = argv[2] ?? COMMANDS.HELP;
 
   if (command === COMMANDS.PHASE0_CHECK) {
