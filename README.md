@@ -114,9 +114,61 @@ What happens:
 - It prints a count and a list of your notes, newest first.
 - Each line shows the title, creation date, and resource URL.
 
-### Still to come in Phase 1
+## Phase 1C Commands
 
-- `summarize-notes` — read notes, generate a summary, and save it to `summaries/`
+### Summarize notes
+
+```bash
+npm run dev -- summarize-notes
+```
+
+What happens:
+- The CLI authenticates to your Pod.
+- It lists the notes in the `notes/` container.
+- It generates a summary through the configured summarizer.
+- It writes the summary to the `summaries/` container.
+
+If no notes are found, it prints a clear message and exits without writing.
+
+### Summarize notes with a limit
+
+```bash
+# Only the most recent note is included
+npm run dev -- summarize-notes --limit 1
+
+# Same as above, short flag
+npm run dev -- summarize-notes -n 2
+```
+
+### Configure the summarizer
+
+Summarization uses a pluggable provider. The default is the offline `mock` provider, so you can try the flow without an API key.
+
+To use a real model:
+
+```bash
+export SUMMARIZER_PROVIDER=openai
+export OPENAI_API_KEY=your-openai-api-key
+```
+
+Optional settings:
+
+```bash
+export OPENAI_MODEL=gpt-4o-mini
+export OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+`OPENAI_BASE_URL` can be pointed at OpenRouter.ai (`https://openrouter.ai/api/v1`) or a local Ollama server (`http://localhost:11434/v1`).
+
+## Web Screen
+
+### Generate and preview summaries in the browser
+
+- Start the web app in demo mode: `npm run web`.
+- Add a note with the "New note" form (or use demo notes).
+- Click **Generate summary**.
+- The new summary shows up in the **Recent summaries** list.
+- Click a summary to preview its generated content.
 
 ## Non-Goals (for now)
 
@@ -157,7 +209,7 @@ What happens:
 - Phase 0 scaffold: complete
 - Phase 1A (Solid connectivity): complete
 - Phase 1B (add-note, list-notes): complete
-- Next: Phase 1C (summarize-notes)
+- Phase 1C (summarize-notes): complete
 
 ## Repeatable Auth Setup (Phase 1A)
 
