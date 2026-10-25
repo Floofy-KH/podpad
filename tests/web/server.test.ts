@@ -8,6 +8,11 @@ import {
 } from "../../src/web/server";
 import type { AuthSession } from "../../src/pod/session";
 import type { SolidConfig } from "../../src/utils/config";
+import type { Summarizer } from "../../src/agent/summarizer";
+
+const mockSummarizer: Summarizer = {
+  summarize: async () => "Mocked LLM summary."
+};
 
 const config: SolidConfig = {
   auth: {
@@ -31,14 +36,17 @@ describe("phone web server", () => {
   const deps: WebServerDeps = {
     mode: "demo",
     loadConfig: () => config,
+    loadSummarizerConfig: () => ({ provider: "mock" }),
     createAuthenticatedSession: async () => {
       throw new Error("Demo mode must not create a Solid session.");
     },
     createPodClient: () => {
       throw new Error("Demo mode must not create a Pod client.");
     },
+    createSummarizer: () => mockSummarizer,
     generateNoteFilename: () => "20261023T000000Z_abcdef_phone-test.txt",
-    demoNotes
+    demoNotes,
+    demoSummaries: []
   };
   const server = createWebServer(deps);
   let baseUrl: string;
@@ -199,10 +207,13 @@ describe("Solid-backed phone web server", () => {
     const liveDeps: WebServerDeps = {
       mode: "solid",
       loadConfig: () => config,
+      loadSummarizerConfig: () => ({ provider: "mock" }),
       createAuthenticatedSession: async () => session,
       createPodClient: () => client,
+      createSummarizer: () => mockSummarizer,
       generateNoteFilename: () => "20261022T120000Z_abcdef_phone-test.txt",
-      demoNotes: []
+      demoNotes: [],
+      demoSummaries: []
     };
     const server = createWebServer(liveDeps);
     server.listen(0, "127.0.0.1");
@@ -244,6 +255,157 @@ describe("Solid-backed phone web server", () => {
       assert.deepEqual(await preview.json(), { content: "Saved on the server." });
       assert.equal(readUrl, noteUrl);
       assert.equal(loggedOut, true);
+    } finally {
+      server.close();
+      await once(server, "close");
+    }
+  });
+});
+
+describe("summary web server", () => {
+  const deps: WebServerDeps = {
+    mode: "demo",
+    loadConfig: () => config,
+    loadSummarizerConfig: () => ({ provider: "mock" }),
+    createAuthenticatedSession: async () => {
+      throw new Error("Demo mode must not create a Solid session.");
+    },
+    createPodClient: () => {
+      throw new Error("Demo mode must not create a Pod client.");
+    },
+    createSummarizer: () => mockSummarizer,
+    generateNoteFilename: () => "20261024T120000Z_abcdef_summary.txt",
+    demoNotes: [],
+    demoSummaries: []
+  };
+  const server = createWebServer(deps);
+  let baseUrl: string;
+
+  before(async () => {
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address() as AddressInfo;
+    baseUrl = `http://127.0.0.1:${address.port}`;
+  });
+
+  after(async () => {
+    server.close();
+    await once(server, "close");
+  });
+
+  it("generates, lists, and reads summaries in demo mode", async () => {
+    deps.demoNotes.unshift({
+      id: "20261024T110000Z_abcdef_demo-note.txt",
+      title: "Demo source note",
+      content: "A note used for the demo summary.",
+      createdAt: "2026-10-24T11:00:00.000Z"
+    });
+
+    const post = await fetch(`${baseUrl}/api/summaries`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: baseUrl
+      },
+      body: JSON.stringify({})
+    });
+    assert.equal(post.status, 201);
+    const postResult = (await post.json()) as { summaries: Array<{ id: string; title: string }> };
+    assert.equal(postResult.summaries.length, 1);
+    assert.equal(postResult.summaries[0]?.id, "20261024T120000Z_abcdef_summary.txt");
+
+    const list = await fetch(`${baseUrl}/api/summaries`);
+    assert.equal(list.status, 200);
+    const listResult = (await list.json()) as { summaries: Array<{ id: string }> };
+    assert.deepEqual(listResult.summaries.map(({ id }) => id), ["20261024T120000Z_abcdef_summary.txt"]);
+
+    const preview = await fetch(`${baseUrl}/api/summaries/${encodeURIComponent("20261024T120000Z_abcdef_summary.txt")}`);
+    assert.equal(preview.status, 200);
+    const previewResult = (await preview.json()) as { content: string };
+    assert.ok(previewResult.content.includes("Mocked LLM summary."));
+  });
+
+  it("rejects invalid summary generation requests", async () => {
+    const post = await fetch(`${baseUrl}/api/summaries`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: baseUrl
+      },
+      body: JSON.stringify({ noteLimit: -1 })
+    });
+
+    assert.equal(post.status, 400);
+  });
+});
+
+describe("Solid-backed summary web server", () => {
+  it("generates, lists, and reads summaries from the Pod", async () => {
+    const noteUrl = "https://pod.example/alex/notes/20261022T120000Z_abcdef_phone-test.txt";
+    const summaryUrl = "https://pod.example/alex/summaries/20261022T120000Z_abcdef_summary.txt";
+    const session: AuthSession = {
+      fetch: globalThis.fetch,
+      logout: async () => undefined,
+      info: { webId: "https://pod.example/alex/profile/card#me" }
+    };
+    const client = {
+      assertReadable: async () => undefined,
+      ensureContainer: async () => undefined,
+      writeTextResource: async () => undefined,
+      readTextResource: async (url: string) => {
+        if (url === noteUrl) return "Saved on the server.";
+        if (url === summaryUrl) return "Mocked LLM summary.";
+        return "Mocked note content.";
+      },
+      listResourceUrls: async (containerUrl: string) => {
+        if (containerUrl.includes("/notes/")) {
+          return [noteUrl];
+        }
+        if (containerUrl.includes("/summaries/")) {
+          return [summaryUrl];
+        }
+        return [];
+      }
+    };
+    const liveDeps: WebServerDeps = {
+      mode: "solid",
+      loadConfig: () => config,
+      loadSummarizerConfig: () => ({ provider: "mock" }),
+      createAuthenticatedSession: async () => session,
+      createPodClient: () => client,
+      createSummarizer: () => mockSummarizer,
+      generateNoteFilename: () => "20261022T120000Z_abcdef_summary.txt",
+      demoNotes: [],
+      demoSummaries: []
+    };
+    const server = createWebServer(liveDeps);
+    server.listen(0, "127.0.0.1");
+    await once(server, "listening");
+    const address = server.address() as AddressInfo;
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    try {
+      const post = await fetch(`${baseUrl}/api/summaries`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: baseUrl
+        },
+        body: JSON.stringify({ noteLimit: 5 })
+      });
+      assert.equal(post.status, 201);
+      const postResult = (await post.json()) as { summaries: Array<{ id: string }> };
+      assert.deepEqual(postResult.summaries.map(({ id }) => id), ["20261022T120000Z_abcdef_summary.txt"]);
+
+      const list = await fetch(`${baseUrl}/api/summaries`);
+      assert.equal(list.status, 200);
+      const listResult = (await list.json()) as { summaries: Array<{ id: string }> };
+      assert.deepEqual(listResult.summaries.map(({ id }) => id), ["20261022T120000Z_abcdef_summary.txt"]);
+
+      const preview = await fetch(`${baseUrl}/api/summaries/${encodeURIComponent("20261022T120000Z_abcdef_summary.txt")}`);
+      assert.equal(preview.status, 200);
+      const previewResult = (await preview.json()) as { content: string };
+      assert.equal(previewResult.content, "Mocked LLM summary.");
     } finally {
       server.close();
       await once(server, "close");

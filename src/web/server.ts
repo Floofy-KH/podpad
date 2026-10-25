@@ -6,6 +6,9 @@ import { PodClient } from "../pod/client";
 import type { AuthSession } from "../pod/session";
 import { ConfigError, loadConfigFromEnv, type SolidConfig } from "../utils/config";
 import { generateNoteFilename } from "../utils/note-name";
+import { createSummarizer, type NoteInput, type Summarizer } from "../agent/summarizer";
+import { loadSummarizerConfigFromEnv, type SummarizerConfig } from "../agent/config";
+import { buildSummaryText } from "../commands/summarize-notes";
 
 const MAX_REQUEST_BYTES = 32_000;
 const MAX_NOTES = 25;
@@ -20,6 +23,16 @@ interface DemoNote extends WebNote {
   content: string;
 }
 
+interface WebSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+}
+
+interface DemoSummary extends WebSummary {
+  content: string;
+}
+
 type WebMode = "demo" | "solid";
 
 type WebPodClient = Pick<
@@ -30,10 +43,13 @@ type WebPodClient = Pick<
 export interface WebServerDeps {
   mode: WebMode;
   loadConfig: () => SolidConfig;
+  loadSummarizerConfig: () => SummarizerConfig;
   createAuthenticatedSession: typeof createAuthenticatedSession;
   createPodClient: (session: AuthSession) => WebPodClient;
+  createSummarizer: (config: SummarizerConfig) => Summarizer;
   generateNoteFilename: typeof generateNoteFilename;
   demoNotes: DemoNote[];
+  demoSummaries: DemoSummary[];
 }
 
 class RequestError extends Error {
@@ -168,6 +184,39 @@ async function handleRequest(
     return;
   }
 
+  if (request.method === "GET" && requestUrl.pathname === "/api/summaries") {
+    const summaries =
+      deps.mode === "demo"
+        ? deps.demoSummaries.slice(0, MAX_NOTES).map(toWebSummary)
+        : await listPodSummaries(deps);
+    sendJson(response, 200, { summaries });
+    return;
+  }
+
+  if (request.method === "GET" && requestUrl.pathname.startsWith("/api/summaries/")) {
+    let id: string;
+    try {
+      id = decodeURIComponent(requestUrl.pathname.slice("/api/summaries/".length));
+    } catch {
+      throw new RequestError("Invalid summary identifier.", 400);
+    }
+    if (!isSummaryFilename(id)) {
+      throw new RequestError("Invalid summary identifier.", 400);
+    }
+    const content = await readSummaryContent(deps, id);
+    sendJson(response, 200, { content });
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/summaries") {
+    assertSameOrigin(request);
+    const body = await readJsonBody(request);
+    const { noteLimit } = validateSummariesBody(body);
+    const summaries = await generateSummary(deps, noteLimit);
+    sendJson(response, 201, { summaries });
+    return;
+  }
+
   sendJson(response, 404, { error: "Not found." });
 }
 
@@ -238,6 +287,155 @@ async function readNoteContent(deps: WebServerDeps, id: string): Promise<string>
     if (!isContained) throw new RequestError("Note not found.", 404);
     return client.readTextResource(resourceUrl);
   });
+}
+
+function toWebSummary(summary: DemoSummary): WebSummary {
+  const { id, title, createdAt } = summary;
+  return { id, title, createdAt };
+}
+
+function isSummaryFilename(filename: string): boolean {
+  return /^\d{8}T\d{6}Z_[a-f0-9]{6}_summary\.txt$/i.test(filename);
+}
+
+function summaryFromUrl(resourceUrl: string): WebSummary {
+  const encodedFilename = new URL(resourceUrl).pathname.split("/").pop() ?? "";
+  let filename = encodedFilename;
+  try {
+    filename = decodeURIComponent(encodedFilename);
+  } catch {
+    // Keep encoded filename if decoding fails
+  }
+
+  const match = /^(\d{8}T\d{6}Z)_[a-f0-9]{6}_summary\.txt$/i.exec(filename);
+  let createdAt = new Date(0).toISOString();
+  if (match) {
+    const timestamp = match[1];
+    const date = new Date(
+      `${timestamp.slice(0, 4)}-${timestamp.slice(4, 6)}-${timestamp.slice(6, 8)}T${timestamp.slice(9, 11)}:${timestamp.slice(11, 13)}:${timestamp.slice(13, 15)}Z`
+    );
+    if (!Number.isNaN(date.valueOf())) {
+      createdAt = date.toISOString();
+    }
+  }
+
+  return { id: filename, title: "Summary", createdAt };
+}
+
+async function listPodSummaries(deps: WebServerDeps): Promise<WebSummary[]> {
+  return withPodClient(deps, async (client, config) => {
+    await client.ensureContainer(config.pod.summariesContainerUrl);
+    const urls = await client.listResourceUrls(config.pod.summariesContainerUrl);
+    const summaries = urls
+      .map(summaryFromUrl)
+      .filter((summary) => isSummaryFilename(summary.id))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return summaries;
+  });
+}
+
+async function readSummaryContent(deps: WebServerDeps, id: string): Promise<string> {
+  if (deps.mode === "demo") {
+    const summary = deps.demoSummaries.find((item) => item.id === id);
+    if (!summary) throw new RequestError("Summary not found.", 404);
+    return summary.content;
+  }
+
+  return withPodClient(deps, async (client, config) => {
+    const resourceUrl = new URL(id, config.pod.summariesContainerUrl).href;
+    const containedUrls = await client.listResourceUrls(config.pod.summariesContainerUrl);
+    const isContained = containedUrls.some((url) => {
+      try {
+        return new URL(url).href === resourceUrl;
+      } catch {
+        return false;
+      }
+    });
+    if (!isContained) throw new RequestError("Summary not found.", 404);
+    return client.readTextResource(resourceUrl);
+  });
+}
+
+async function generateSummary(deps: WebServerDeps, noteLimit: number | undefined): Promise<WebSummary[]> {
+  if (deps.mode === "demo") {
+    const demoNotes = deps.demoNotes.slice(0, MAX_NOTES);
+    const selectedNotes = noteLimit === undefined ? demoNotes : demoNotes.slice(0, noteLimit);
+    const inputs: NoteInput[] = selectedNotes.map((note) => ({
+      title: note.title,
+      content: note.content,
+      resourceUrl: note.id
+    }));
+    const summarizer = deps.createSummarizer(deps.loadSummarizerConfig());
+    const summary = await summarizer.summarize(inputs);
+    const content = buildSummaryText(
+      selectedNotes.map((note) => ({
+        filename: note.id,
+        title: note.title,
+        createdAt: new Date(note.createdAt),
+        resourceUrl: note.id
+      })),
+      summary
+    );
+    const entry: DemoSummary = {
+      id: deps.generateNoteFilename("summary"),
+      title: "Summary",
+      createdAt: new Date().toISOString(),
+      content
+    };
+    deps.demoSummaries.unshift(entry);
+    return deps.demoSummaries.slice(0, MAX_NOTES).map(toWebSummary);
+  }
+
+  return withPodClient(deps, async (client, config) => {
+    await client.ensureContainer(config.pod.notesContainerUrl);
+    const urls = await client.listResourceUrls(config.pod.notesContainerUrl);
+    const notes = urls
+      .map((url) => {
+        const note = noteFromUrl(url);
+        return {
+          filename: note.id,
+          title: note.title,
+          createdAt: new Date(note.createdAt),
+          resourceUrl: new URL(note.id, config.pod.notesContainerUrl).href
+        };
+      })
+      .filter((note) => isNoteFilename(note.filename))
+      .sort((left, right) => right.createdAt.valueOf() - left.createdAt.valueOf())
+      .slice(0, noteLimit ?? MAX_NOTES);
+
+    const inputs: NoteInput[] = [];
+    for (const note of notes) {
+      const content = await client.readTextResource(note.resourceUrl);
+      inputs.push({ title: note.title, content, resourceUrl: note.resourceUrl });
+    }
+
+    const summarizer = deps.createSummarizer(deps.loadSummarizerConfig());
+    const summary = await summarizer.summarize(inputs);
+    const filename = deps.generateNoteFilename("summary");
+    const resourceUrl = `${config.pod.summariesContainerUrl}${filename}`;
+    await client.writeTextResource(resourceUrl, buildSummaryText(notes, summary));
+
+    const summaryUrls = await client.listResourceUrls(config.pod.summariesContainerUrl);
+    const summaries = summaryUrls
+      .map(summaryFromUrl)
+      .filter((summary) => isSummaryFilename(summary.id))
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return summaries;
+  });
+}
+
+function validateSummariesBody(value: unknown): { noteLimit?: number } {
+  if (typeof value !== "object" || value === null) {
+    throw new RequestError("A note limit is optional.", 400);
+  }
+  const { noteLimit } = value as { noteLimit?: unknown };
+  if (noteLimit === undefined) {
+    return {};
+  }
+  if (typeof noteLimit !== "number" || !Number.isInteger(noteLimit) || noteLimit < 0) {
+    throw new RequestError("noteLimit must be a non-negative integer.", 400);
+  }
+  return { noteLimit };
 }
 
 async function withPodClient<T>(
@@ -393,10 +591,13 @@ function start(): void {
   const server = createWebServer({
     mode,
     loadConfig: loadConfigFromEnv,
+    loadSummarizerConfig: loadSummarizerConfigFromEnv,
     createAuthenticatedSession,
     createPodClient: (session) => new PodClient(session),
+    createSummarizer,
     generateNoteFilename,
-    demoNotes: []
+    demoNotes: [],
+    demoSummaries: []
   });
   server.listen(port, host, () => {
     console.log(`PodPad web app (${mode}) listening on http://${host}:${port}`);
