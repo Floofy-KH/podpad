@@ -3,7 +3,8 @@ const COMMANDS = {
   PHASE0_CHECK: "phase0-check",
   CONNECTIVITY_CHECK: "connectivity-check",
   ADD_NOTE: "add-note",
-  LIST_NOTES: "list-notes"
+  LIST_NOTES: "list-notes",
+  SUMMARIZE_NOTES: "summarize-notes"
 } as const;
 
 type Command = (typeof COMMANDS)[keyof typeof COMMANDS];
@@ -20,6 +21,7 @@ function printHelp(): void {
   console.log(`  ${COMMANDS.CONNECTIVITY_CHECK}  Validate auth + Pod connectivity`);
   console.log(`  ${COMMANDS.ADD_NOTE}      Add a note from stdin to your Pod`);
   console.log(`  ${COMMANDS.LIST_NOTES}    List notes from your Pod`);
+  console.log(`  ${COMMANDS.SUMMARIZE_NOTES}  Summarize notes and save a summary to summaries/`);
 }
 
 function runPhase0Check(): void {
@@ -44,6 +46,10 @@ export function parseCommand(argv: string[]): Command {
 
   if (command === COMMANDS.LIST_NOTES) {
     return COMMANDS.LIST_NOTES;
+  }
+
+  if (command === COMMANDS.SUMMARIZE_NOTES) {
+    return COMMANDS.SUMMARIZE_NOTES;
   }
 
   return COMMANDS.HELP;
@@ -75,15 +81,23 @@ async function main(argv: string[]): Promise<void> {
     return;
   }
 
+  if (command === COMMANDS.SUMMARIZE_NOTES) {
+    const { runSummarizeNotes } = await import("./commands/summarize-notes");
+    await runSummarizeNotes(argv);
+    return;
+  }
+
   printHelp();
 }
 
-main(process.argv)
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Command failed: ${message}`);
-    process.exit(1);
-  });
+if (require.main === module) {
+  main(process.argv)
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`Command failed: ${message}`);
+      process.exit(1);
+    });
+}

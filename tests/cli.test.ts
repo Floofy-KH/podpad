@@ -44,4 +44,17 @@ describe("parseCommand", () => {
 
     assert.equal(parseCommand(argv), "help");
   });
+
+  it("returns summarize-notes for 'summarize-notes' argv", () => {
+    const argv = ["node", "src/cli.ts", "summarize-notes"];
+
+    assert.equal(parseCommand(argv), "summarize-notes");
+  });
+
+  it("still returns correct values for existing commands", () => {
+    assert.equal(parseCommand(["node", "src/cli.ts", "add-note"]), "add-note");
+    assert.equal(parseCommand(["node", "src/cli.ts", "list-notes"]), "list-notes");
+    assert.equal(parseCommand(["node", "src/cli.ts", "phase0-check"]), "phase0-check");
+    assert.equal(parseCommand(["node", "src/cli.ts", "connectivity-check"]), "connectivity-check");
+  });
 });
