@@ -29,7 +29,7 @@ button:disabled { opacity: .6; cursor: wait; }
 .note-title { margin: 0 0 4px; font-weight: 700; overflow-wrap: anywhere; }
 .note-date { color: #64716b; font-size: .86rem; }
 .note-search { margin: 0 0 8px; }
-.note-list { display: grid; }
+.note-list, .summary-list { display: grid; }
 .note-workspace { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
 .note-workspace h2 { margin-top: 0; }
 .note-workspace section { min-width: 0; }

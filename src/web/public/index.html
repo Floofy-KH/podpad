@@ -46,6 +46,16 @@
         <div class="card" id="preview" aria-live="polite"><p class="empty">Choose a note to preview its contents.</p></div>
       </section>
     </div>
+    <section aria-labelledby="summaries-heading">
+      <h2 id="summaries-heading">Recent summaries</h2>
+      <div class="card">
+        <button id="generate-summary-button" type="button">Generate summary</button>
+        <label for="summary-note-limit">Include last N notes</label>
+        <input id="summary-note-limit" name="summary-note-limit" type="number" min="0" max="25" step="1" placeholder="All notes">
+        <div class="summary-list" id="summaries" aria-live="polite"><p class="empty">No summaries yet. Generate one to see it here.</p></div>
+      </div>
+      <div class="card" id="summary-preview" aria-live="polite"><p class="empty">Choose a summary to preview it.</p></div>
+    </section>
     <p class="demo-hint" id="demo-hint" hidden>Demo mode keeps notes in memory; they disappear when the server restarts.</p>
   </main>
 </body>
